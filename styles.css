@@ -60,6 +60,12 @@ h2 { font-size: 15px; margin: 0 0 10px; }
 .tick:hover:not(:disabled) { border-color: var(--accent); }
 .tick[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .tick:disabled { opacity: .45; cursor: default; }
+.tick.ghost { border-color: transparent; background: none; cursor: default; }
+.nd { padding: 8px 0 2px; border-top: 1px solid var(--border); }
+.nd:first-of-type { border-top: 0; }
+.nd-h { flex-wrap: wrap; font-size: 14px; }
+.nd .items .item { padding: 8px 4px; }
+.nd .items .item:first-child { border-top: 1px dashed var(--border); }
 .item .txt { flex: 1; min-width: 0; }
 .item.done .txt span.main { text-decoration: line-through; color: var(--muted); }
 .item .meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 13px; color: var(--muted); }

@@ -59,20 +59,59 @@ function itemRow(it, opts) {
       <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${dsa ? '<span class="small">tick it on Striver too</span>' : ""}</div>
     </div></li>`;
 }
-function projItemRow(it) {
-  return `<li class="item t-${it.track}"><span class="dot t-${it.track}" style="margin-top:8px"></span>
+// A projected (future) item. Non-DSA items can be done early: ticking logs them as done today.
+function projItemRow(it, date, i) {
+  const can = S.canTickAhead(it);
+  const lead = can
+    ? `<button class="tick" role="checkbox" aria-checked="false" aria-label="Done it early" data-a="ahead" data-date="${date}" data-i="${i}">${CHECK}</button>`
+    : `<span class="tick ghost" aria-hidden="true"><span class="dot t-${it.track}"></span></span>`;
+  const note = it.track === "dsa" && !it.fixed ? '<span class="small">tick on Striver, then sync</span>' : it.fixed ? '<span class="small">on the day</span>' : "";
+  return `<li class="item t-${it.track}">${lead}
     <div class="txt"><span class="main">${esc(describe(it))}</span>
-    <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span></div></div></li>`;
+    <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${note}</div></div></li>`;
+}
+
+// Next 14 days after `t` (or the first 14 days of the plan before it starts). Exam/break runs are grouped.
+function nextDaysCard(t, proj) {
+  const end = addDays(t, 14);
+  const days = proj.days.filter((d) => d.date > t && d.date <= end);
+  if (!days.length) return "";
+  const parts = [];
+  for (let k = 0; k < days.length; k++) {
+    const d = days[k];
+    if (d.kind !== "study") {
+      let j = k;
+      while (j + 1 < days.length && days[j + 1].kind === d.kind && days[j + 1].label === d.label) j++;
+      const range = j > k ? `${fmtShort(d.date)} – ${fmtShort(days[j].date)}` : fmtDay(d.date);
+      const txt = d.kind === "blocked" ? `Blocked: ${d.label}` : d.label ? shortBlock({ label: d.label }) : "No plan";
+      parts.push(`<div class="nd"><div class="row nd-h"><b>${range}</b><span class="chip">${esc(txt)}</span></div></div>`);
+      k = j;
+      continue;
+    }
+    const ev = d.events.length ? `<div class="pin small">📌 ${d.events.map(esc).join(" · ")}</div>` : "";
+    parts.push(`<div class="nd"><div class="row nd-h"><b>${fmtDay(d.date)}</b><span class="muted small">${hh(d.planned)}h</span></div>${ev}
+      ${d.items.length ? `<ul class="items">${d.items.map((it, i) => projItemRow(it, d.date, i)).join("")}</ul>` : '<p class="muted small" style="margin:4px 0">Nothing planned.</p>'}</div>`);
+  }
+  return `<div class="card"><div class="row"><h2 style="margin:0">Next 14 days</h2><span class="muted small">projected</span></div>
+    <p class="muted small" style="margin:4px 0 6px">Free now? Do any Java, SQL, project or career item early and tick it here. It counts as done today and the rest of the plan moves up. DSA: solve on Striver, then sync.</p>
+    ${parts.join("")}</div>`;
+}
+
+function aheadCard(t) {
+  const list = state.ahead[t];
+  if (!list || !list.length) return "";
+  const hrs = list.reduce((a, x) => a + x.hours, 0);
+  return `<div class="card"><div class="row"><h2 style="margin:0">Done ahead today</h2><span class="chip good">+${hh(hrs)}h</span></div>
+    <ul class="items">${list.map((x, i) => `<li class="item done t-${x.track}">
+      <button class="tick" role="checkbox" aria-checked="true" aria-label="Undo" data-a="unahead" data-date="${t}" data-i="${i}">${CHECK}</button>
+      <div class="txt"><span class="main">${esc(x.text)}</span>
+      <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div></div></li>`).join("")}</ul></div>`;
 }
 function statusChip(m) {
   if (m.status === "done") return '<span class="chip good">Done</span>';
   if (m.status === "on track") return '<span class="chip good">On track</span>';
   if (m.status === "late") return '<span class="chip bad">Late</span>';
   return '<span class="chip warn">At risk</span>';
-}
-function nextStudyDay(t) {
-  const proj = S.project(state, t);
-  return proj.days.find((d) => d.kind === "study" && d.items.length) || null;
 }
 function blockBanner(kind, text) {
   return `<div class="banner ${kind}"><b>${esc(text)}</b></div>`;
@@ -88,7 +127,7 @@ function viewToday(t) {
 
   if (t < PLAN_START) {
     const days = Math.round((Date.parse(PLAN_START) - Date.parse(t)) / 864e5);
-    left += `<div class="banner exam"><b>Your plan starts ${fmtDay(PLAN_START)}</b>${days} day${days === 1 ? "" : "s"} to go. CAT 2 is first. Nothing to do until it's over except the exams.</div>`;
+    left += `<div class="banner exam"><b>Your plan starts ${fmtDay(PLAN_START)}</b>${days} day${days === 1 ? "" : "s"} to go. CAT 2 comes first. If you're free, you can get ahead on anything in the next 14 days below.</div>`;
   } else if (t > PLAN_END) {
     left += blockBanner("internship", "The plan is finished. Good luck!");
   } else if (userBlock) {
@@ -117,12 +156,9 @@ function viewToday(t) {
     left += `<div class="btns"><button class="btn" data-a="block" data-date="${t}">Block today (hackathon / travel / sick)</button></div>`;
   }
 
-  // what's next
-  const nx = (info.kind !== "study" || userBlock || t < PLAN_START || (state.frozen[t] && S.dayProgress(state, t).doneCount === state.frozen[t].items.length)) ? nextStudyDay(t) : null;
-  if (nx) {
-    left += `<div class="card" style="margin-top:14px"><h2>${t < PLAN_START || info.kind !== "study" ? "First study day" : "Next up"}: ${fmtDay(nx.date)}</h2>
-      <ul class="items">${nx.items.slice(0, 5).map(projItemRow).join("")}</ul>
-      <p class="muted small" style="margin:6px 0 0">Projected. It updates as you make progress.</p></div>`;
+  // work done early today + the next two weeks
+  if (t <= PLAN_END) {
+    left += `<div style="margin-top:14px">${aheadCard(t)}${nextDaysCard(t, S.project(state, t))}</div>`;
   }
 
   // right column
@@ -224,7 +260,7 @@ function dayPanel(date, t, pm) {
   else {
     const day = pm[date];
     body = day && day.items.length
-      ? `<ul class="items">${day.items.map(projItemRow).join("")}</ul><p class="muted small" style="margin:6px 0 0">Projected. It updates as you make progress.</p>`
+      ? `<ul class="items">${day.items.map((it, i) => projItemRow(it, date, i)).join("")}</ul><p class="muted small" style="margin:6px 0 0">Projected. It updates as you make progress. Ticking an item here logs it as done today.</p>`
       : '<p class="muted">Nothing planned.</p>';
   }
   const canBlock = date >= t && (info.kind === "study" || ub);
@@ -301,6 +337,13 @@ $app.addEventListener("click", (e) => {
   if (a === "bm") { e.preventDefault(); toast("Drag this button to your bookmarks bar"); return; }
   if (a === "nav") { e.preventDefault(); ui.view = el.dataset.v; writePref("view", ui.view); render(); window.scrollTo(0, 0); return; }
   if (a === "tick") { S.toggleItem(state, el.dataset.date, +el.dataset.i); save(); render(); return; }
+  if (a === "ahead") {
+    const day = S.project(state, t).days.find((d) => d.date === el.dataset.date);
+    const it = day && day.items[+el.dataset.i];
+    if (it && S.tickAhead(state, t, it, el.dataset.date)) { save(); render(); toast("Done early. Logged for today and the plan moved up."); }
+    return;
+  }
+  if (a === "unahead") { S.untickAhead(state, el.dataset.date, +el.dataset.i); save(); render(); return; }
   if (a === "day") { ui.sel = el.dataset.date; const mk = el.dataset.date.slice(0, 7); if (MONTHS.includes(mk)) ui.month = mk; render(); return; }
   if (a === "month") { ui.month = el.dataset.m; render(); return; }
   if (a === "block") {

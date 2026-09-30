@@ -21,6 +21,7 @@ export function freshState() {
     frozen: {}, // date -> { items: [...] }  (today's list is fixed once opened)
     weeks: {}, // monday -> { multiplier, boosts, deficit, rescope, ... }
     credit: {}, // hours banked per track between days (so small shares add up)
+    ahead: {}, // date -> [{ id, track, text, hours, planned }] future items done early on that date
   };
 }
 
@@ -131,6 +132,27 @@ export function toggleItem(state, date, idx) {
   else if (it.kind === "dsa") state.dsaDone[it.step] = Math.max(0, (state.dsaDone[it.step] || 0) + sign * it.count);
   else state.fixedDone = Math.max(0, state.fixedDone + sign * it.hours);
   if (sign > 0) chk[idx] = true; else delete chk[idx];
+  return true;
+}
+
+// ---- work ahead: tick a future (projected) item today ----
+// Only non-DSA, non-fixed items: DSA is counted by the Striver sync.
+export const canTickAhead = (it) => !!(it && it.id && !it.fixed && it.track !== "dsa");
+
+export function tickAhead(state, today, item, plannedFor) {
+  if (!canTickAhead(item)) return false;
+  (state.ahead[today] = state.ahead[today] || []).push({ id: item.id, track: item.track, text: describe(item), hours: item.hours, planned: plannedFor || null });
+  state.tasks[item.id] = (state.tasks[item.id] || 0) + item.hours;
+  return true;
+}
+
+export function untickAhead(state, date, idx) {
+  const list = state.ahead[date];
+  if (!list || !list[idx]) return false;
+  const it = list[idx];
+  state.tasks[it.id] = Math.max(0, (state.tasks[it.id] || 0) - it.hours);
+  list.splice(idx, 1);
+  if (!list.length) delete state.ahead[date];
   return true;
 }
 

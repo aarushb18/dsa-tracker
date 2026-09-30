@@ -24,3 +24,23 @@ function run(name, ratioFor, until = "2027-04-16") {
 run("100% effort", () => 1);
 run("80% effort", () => 0.8);
 run("alternating 140%/50%", (d) => (Math.floor((Date.parse(d) - Date.parse("2026-10-05")) / 6048e5) % 2 ? 0.5 : 1.4));
+
+// Work ahead: on 30 Sep, do the first two non-DSA items from the next 14 days early.
+{
+  const st = S.freshState();
+  const t = "2026-09-30";
+  const firstIds = () => S.project(st, t).days.flatMap((d) => d.items.map((it, i) => ({ d: d.date, i, it }))).filter((x) => S.canTickAhead(x.it));
+  const picks = firstIds().slice(0, 2);
+  for (const p of picks) {
+    const day = S.project(st, t).days.find((d) => d.date === p.d);
+    const idx = day.items.findIndex((it) => it.id === p.it.id);
+    S.tickAhead(st, t, day.items[idx], p.d);
+  }
+  const hrs = st.ahead[t].reduce((a, x) => a + x.hours, 0);
+  const still = firstIds().filter((x) => picks.some((p) => p.it.id === x.it.id && p.d === x.d && p.it.part?.from === x.it.part?.from));
+  const wk = S.ensureWeek(st, "2026-10-05");
+  console.log(`\n== work ahead: ticked ${st.ahead[t].map((x) => x.id).join(", ")} (${hrs}h) on ${t}`);
+  console.log(`   same items still projected on the same days: ${still.length}; week of 5 Oct ahead by ${wk.ahead.toFixed(2)}h, multiplier ${wk.multiplier}`);
+  S.untickAhead(st, t, 0); S.untickAhead(st, t, 0);
+  console.log(`   after undo: tasks=${JSON.stringify(st.tasks)} ahead=${JSON.stringify(st.ahead)}`);
+}

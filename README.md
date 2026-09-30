@@ -6,6 +6,7 @@ Plain HTML/CSS/JS. There is no build step and no server, so it deploys to Vercel
 
 ## Use it
 - **Today** shows what's due, with exam banners and reminders. Tick items as you finish them.
+- **Next 14 days** (on Today, from any date, even before the plan starts) lists the upcoming days. Java, SQL, project and career items can be done early: ticking one logs it as done today, the plan moves up, and the Monday re-plan counts you as ahead. DSA is counted by the Striver sync instead.
 - **Planner** is the whole plan by month. Click a day to see it. Block a day (hackathon, travel, sick) and it won't count as behind.
 - **Progress** shows milestones (target vs projected), DSA by step, hours by track and the weekly re-plan log.
 - **Sync** brings in your Striver A2Z progress with one click, and exports/imports a backup.

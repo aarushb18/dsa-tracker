@@ -74,20 +74,24 @@ export const TRACK_LABELS = {
 
 // ---- DSA: Striver A2Z, first pass (hard ones skipped, come back later) ----
 // done = already ticked on the sheet (29 Sep 2026). firstPass = how many to do this year.
-// Order is deliberate: Sliding Window + Stack/Queue before Bit/Greedy (more common in intern interviews).
+// Order is deliberate: Sliding Window + Stack/Queue, then Graphs (BFS/DFS) and 1D DP basics, before
+// Trees/Greedy/Bit. To make room, Linked List, Binary Search and Recursion stop before their hardest
+// problems this year (those move to 2nd year with the rest of Graphs/DP).
 export const DSA_STEPS = [
   { key: "sorting", name: "Sorting", total: 7, done: 2, firstPass: 7, hrs: 0.6 },
   { key: "arrays", name: "Arrays", total: 32, done: 0, firstPass: 26, hrs: 0.8 },
   { key: "hashing", name: "Hashing", total: 6, done: 1, firstPass: 6, hrs: 0.6 },
-  { key: "bs", name: "Binary Search", total: 32, done: 0, firstPass: 26, hrs: 0.85 },
+  { key: "bs", name: "Binary Search", total: 32, done: 0, firstPass: 22, hrs: 0.85 },
   { key: "strings", name: "Strings (Basic and Medium)", total: 7, done: 0, firstPass: 7, hrs: 0.8 },
-  { key: "recursion", name: "Recursion", total: 22, done: 0, firstPass: 18, hrs: 1.0 },
-  { key: "ll", name: "Linked-List", total: 49, done: 0, firstPass: 38, hrs: 0.75 },
+  { key: "recursion", name: "Recursion", total: 22, done: 0, firstPass: 15, hrs: 1.0 },
+  { key: "ll", name: "Linked-List", total: 49, done: 0, firstPass: 26, hrs: 0.75 },
   { key: "sliding", name: "Sliding Window / 2 Pointer", total: 13, done: 0, firstPass: 10, hrs: 1.0 },
   { key: "stack", name: "Stack / Queues", total: null, done: 0, firstPass: 24, hrs: 0.9 },
-  { key: "bit", name: "Bit Manipulation", total: 14, done: 0, firstPass: 10, hrs: 0.7, stretch: true },
+  { key: "graphs", name: "Graphs", total: null, done: 0, firstPass: 8, hrs: 1.0 },
+  { key: "dp", name: "Dynamic Programming", total: null, done: 0, firstPass: 8, hrs: 1.0 },
+  { key: "trees", name: "Binary Trees", total: 32, done: 0, firstPass: 15, hrs: 0.9, stretch: true },
   { key: "greedy", name: "Greedy Algorithms", total: 14, done: 0, firstPass: 10, hrs: 0.9, stretch: true },
-  { key: "trees", name: "Binary Trees", total: null, done: 0, firstPass: 15, hrs: 0.9, stretch: true },
+  { key: "bit", name: "Bit Manipulation", total: 14, done: 0, firstPass: 10, hrs: 0.7, stretch: true },
 ];
 export const DSA_DONE_AT_START = 38; // whole sheet, incl. Beginner Problems
 
@@ -117,7 +121,6 @@ export const TASKS = {
     t("java-09", "Collections 3: ArrayDeque, PriorityQueue, Comparable vs Comparator", 3),
     t("java-10", "Generics basics", 2),
     t("java-11", "Mini project: CLI expense/grades manager (OOP + collections + file I/O), push to GitHub", 6),
-    t("java-12", "(Optional) Java 8: lambdas, streams (map / filter / collect)", 3),
   ],
   sql: [
     t("sql-00", "Install PostgreSQL locally + a GUI (pgAdmin or DBeaver)", 0.5),
