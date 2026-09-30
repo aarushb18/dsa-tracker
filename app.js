@@ -34,10 +34,18 @@ function resLinks(it) {
   if (it.track === "dsa" && !it.fixed && (it.step || it.kind === "dsa")) return `<a class="watch" href="${STRIVER}" target="_blank" rel="noopener">▶ Striver</a>`;
   const list = RESOURCES[baseId(it.id)];
   if (!list || !list.length) return "";
-  const tag = (r) => (r.kind === "article" ? '<span class="rk">article</span>' : r.kind === "search" ? '<span class="rk">search</span>' : r.kind === "playlist" ? '<span class="rk">playlist</span>' : "") + (r.lang === "EN" ? '<span class="rk">EN</span>' : "");
-  const a = (r) => `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.t)}</a>${tag(r)}`;
+  const role = (r) => (/^Alt: /.test(r.t) ? "alt" : /^Optional: /.test(r.t) ? "optional" : "");
+  const name = (r) => r.t.replace(/^(Alt|Optional): /, "");
+  const tag = (r) => (role(r) ? `<span class="rk ${role(r)}">${role(r)}</span>` : "") +
+    (r.kind === "article" ? '<span class="rk">article</span>' : r.kind === "search" ? '<span class="rk">search</span>' : r.kind === "playlist" ? '<span class="rk">playlist</span>' : "") + (r.lang === "EN" ? '<span class="rk">EN</span>' : "");
+  const a = (r) => `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(name(r))}</a>${tag(r)}`;
   if (list.length === 1) return `<a class="watch" href="${esc(list[0].u)}" target="_blank" rel="noopener" title="${esc(list[0].t)}">▶ Watch</a>`;
-  return `<details class="res"><summary>▶ Watch · ${list.length}</summary><ol>${list.map((r) => `<li>${a(r)}</li>`).join("")}</ol></details>`;
+  const roles = new Set(list.map(role));
+  const hint = [baseId(it.id) === "java-01" ? "Scan W3Schools, then watch only what you don't know" : "Watch all, in order",
+    roles.has("alt") ? "alt = backup if you don't like the first" : "",
+    roles.has("optional") ? "optional = skip if short on time" : "",
+    list.some((r) => r.kind === "search") ? "search = pick any good result" : ""].filter(Boolean).join(" · ");
+  return `<details class="res"><summary>▶ Watch · ${list.length}</summary><p class="res-hint">${esc(hint)}</p><ol>${list.map((r) => `<li class="${role(r)}">${a(r)}</li>`).join("")}</ol></details>`;
 }
 
 const resRow = (it) => { const h = resLinks(it); return h ? `<div class="resrow">${h}</div>` : ""; };
