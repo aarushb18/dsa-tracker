@@ -1,0 +1,11 @@
+{
+  "name": "preppilot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Adaptive study/internship planner: static site, no build step.",
+  "scripts": {
+    "test": "node tests/store-sim.mjs",
+    "start": "npx serve ."
+  }
+}
