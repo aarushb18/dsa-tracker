@@ -29,6 +29,8 @@ export const RESOURCES = {
 
   // ---------- Java (CodeWithHarry playlist; gaps filled from other Hindi channels) ----------
   "java-01": [
+    // Refresher: pick only the videos for what you don't know yet (1.5x is fine).
+    v("W3Schools Java tutorial: quick scan to find your gaps first", "https://www.w3schools.com/java/", { kind: "article" }),
     cwh(3, "Variables & data types", "X0zdAG7gfgs"),
     cwh(5, "User input", "HRfmLqqvzUs"),
     cwh(13, "Intro to Strings", "tem1bKt2Osc"),

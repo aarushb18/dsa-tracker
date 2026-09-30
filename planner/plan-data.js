@@ -110,7 +110,7 @@ export const TASKS = {
     t("git-02", "Git branches, merge, a PR on your own repo; write the dsa-java README", 1.5),
   ],
   java: [
-    t("java-01", "Java basics: types, loops, methods, arrays, String vs StringBuilder", 5),
+    t("java-01", "Java refresher (skip what you know): types, loops, methods, arrays, String vs StringBuilder", 4),
     t("java-02", "OOP 1: classes, objects, constructors, this, static", 3),
     t("java-03", "OOP 2: inheritance, super, method overriding", 3),
     t("java-04", "OOP 3: polymorphism, abstract classes, interfaces", 3),
