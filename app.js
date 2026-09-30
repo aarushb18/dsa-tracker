@@ -1,7 +1,9 @@
 import * as S from "./store.js";
-import { TRACK_LABELS, DSA_STEPS, TASKS, BLOCKS } from "./planner/plan-data.js";
+import { TRACK_LABELS, DSA_STEPS, TASKS, BLOCKS, EVENTS } from "./planner/plan-data.js";
 import { dayInfo, addDays, mondayOf, dow, describe } from "./planner/scheduler.js";
 import { bookmarkletHref } from "./sync.js";
+import { RESOURCES } from "./planner/resources.js";
+import { quoteFor } from "./quotes.js";
 
 const { PLAN_START, PLAN_END } = S;
 const $app = document.getElementById("app");
@@ -24,6 +26,21 @@ const hh = (n) => (Math.round(n * 4) / 4).toString();
 const label = (tr) => TRACK_LABELS[tr] || "Review";
 const shortBlock = (b) => b.label.split(" — ")[0].split(";")[0];
 const CHECK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`;
+
+const STRIVER = "https://takeuforward.org/prep-hub/strivers-a2z-dsa-sheet?page=sheet";
+const baseId = (id) => (id || "").split(":")[0];
+// "▶ Watch" links for an item (one link, or a small expandable list)
+function resLinks(it) {
+  if (it.track === "dsa" && !it.fixed && (it.step || it.kind === "dsa")) return `<a class="watch" href="${STRIVER}" target="_blank" rel="noopener">▶ Striver</a>`;
+  const list = RESOURCES[baseId(it.id)];
+  if (!list || !list.length) return "";
+  const tag = (r) => (r.kind === "article" ? '<span class="rk">article</span>' : r.kind === "search" ? '<span class="rk">search</span>' : r.kind === "playlist" ? '<span class="rk">playlist</span>' : "") + (r.lang === "EN" ? '<span class="rk">EN</span>' : "");
+  const a = (r) => `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.t)}</a>${tag(r)}`;
+  if (list.length === 1) return `<a class="watch" href="${esc(list[0].u)}" target="_blank" rel="noopener" title="${esc(list[0].t)}">▶ Watch</a>`;
+  return `<details class="res"><summary>▶ Watch · ${list.length}</summary><ol>${list.map((r) => `<li>${a(r)}</li>`).join("")}</ol></details>`;
+}
+
+const resRow = (it) => { const h = resLinks(it); return h ? `<div class="resrow">${h}</div>` : ""; };
 
 function toast(msg) {
   const el = document.createElement("div");
@@ -56,7 +73,7 @@ function itemRow(it, opts) {
   return `<li class="item ${checked ? "done" : ""} t-${it.track}">
     <button class="tick" role="checkbox" aria-checked="${!!checked}" aria-label="Mark done" ${interactive ? `data-a="tick" data-date="${date}" data-i="${i}"` : "disabled"}>${CHECK}</button>
     <div class="txt"><span class="main">${esc(it.text)}</span>
-      <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${dsa ? '<span class="small">tick it on Striver too</span>' : ""}</div>
+      <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${dsa ? '<span class="small">tick it on Striver too</span>' : ""}</div>${resRow(it)}
     </div></li>`;
 }
 // A projected (future) item. Non-DSA items can be done early: ticking logs them as done today.
@@ -68,7 +85,7 @@ function projItemRow(it, date, i) {
   const note = it.track === "dsa" && !it.fixed ? '<span class="small">tick on Striver, then sync</span>' : it.fixed ? '<span class="small">on the day</span>' : "";
   return `<li class="item t-${it.track}">${lead}
     <div class="txt"><span class="main">${esc(describe(it))}</span>
-    <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${note}</div></div></li>`;
+    <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${note}</div>${resRow(it)}</div></li>`;
 }
 
 // Next 14 days after `t` (or the first 14 days of the plan before it starts). Exam/break runs are grouped.
@@ -105,7 +122,7 @@ function aheadCard(t) {
     <ul class="items">${list.map((x, i) => `<li class="item done t-${x.track}">
       <button class="tick" role="checkbox" aria-checked="true" aria-label="Undo" data-a="unahead" data-date="${t}" data-i="${i}">${CHECK}</button>
       <div class="txt"><span class="main">${esc(x.text)}</span>
-      <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div></div></li>`).join("")}</ul></div>`;
+      <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div>${resRow(x)}</div></li>`).join("")}</ul></div>`;
 }
 function statusChip(m) {
   if (m.status === "done") return '<span class="chip good">Done</span>';
@@ -118,11 +135,60 @@ function blockBanner(kind, text) {
 }
 
 // ---------- Today ----------
+const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+
+function hero(t, info, wk, userBlock) {
+  const h = S.hourIST();
+  const greet = h < 4 ? "Still up, Aarush?" : h < 12 ? "Good morning, Aarush" : h < 17 ? "Good afternoon, Aarush" : h < 22 ? "Good evening, Aarush" : "Good night, Aarush";
+  const st = S.streak(state, t);
+  const streakHtml = st.current > 0
+    ? `<span class="streak" title="Days in a row you've done something. Exam, break and blocked days don't break it.">🔥 ${st.current}-day streak</span>${st.best > st.current ? `<span class="muted small">best ${st.best}</span>` : ""}`
+    : `<span class="streak off">Tick one thing to start a streak</span>${st.best ? `<span class="muted small">best ${st.best}</span>` : ""}`;
+  const [q, who] = quoteFor(t);
+  return `<div class="hero">
+    <h1>${greet}</h1>
+    <div class="hero-meta">${streakHtml}</div>
+    <p class="sub">${fmtDay(t)}${info.phase ? " · " + esc(info.phase.name) : ""}</p>
+    <p class="status">${esc(statusLine(t, info, wk, userBlock))}</p>
+    <p class="quote">“${esc(q)}”${who ? ` <span>— ${esc(who)}</span>` : ""}</p>
+  </div>`;
+}
+
+function statusLine(t, info, wk, userBlock) {
+  const parts = [];
+  if (t < PLAN_START) parts.push(`Plan starts ${fmtDay(PLAN_START)}. CAT 2 comes first`);
+  else if (t > PLAN_END) parts.push("The plan is finished. Well done");
+  else if (userBlock) parts.push(`Day off: ${userBlock}. It won't count as behind`);
+  else if (info.kind === "exam") {
+    const paper = info.events.some((e) => /paper/i.test(e));
+    const next = EVENTS.find((e) => e.date > t && /paper/i.test(e.label));
+    parts.push(paper ? "Paper today. Best of luck 🍀" : next ? `Exam break. Next paper ${fmtDay(next.date)}` : "Exam period. The plan is paused");
+  } else if (info.kind === "rest") parts.push("Break day. Enjoy it, no plan today");
+  else if (info.kind === "internship") parts.push("Internship time. Good luck 💼");
+  else if (info.kind === "study") {
+    const p = S.dayProgress(state, t);
+    if (!p || !p.count) parts.push("Light day: nothing planned. Rest or get ahead");
+    else if (p.doneCount === p.count) parts.push("All done for today 🎉");
+    else if (p.doneCount) parts.push(`${p.count - p.doneCount} of ${p.count} items left, about ${hh(p.planned - p.done)}h`);
+    else parts.push(`${p.count} item${p.count === 1 ? "" : "s"} today, about ${hh(p.planned)}h`);
+    if (wk && wk.ahead > 0.5) parts.push(`you're ${hh(wk.ahead)}h ahead this week`);
+    else if (wk && wk.multiplier > 1.01) parts.push("a little catch-up this week");
+  }
+  const ahead = (state.ahead[t] || []).reduce((a, x) => a + x.hours, 0);
+  if (ahead) parts.push(`+${hh(ahead)}h done early today`);
+  const exam = BLOCKS.find((b) => b.type === "exam" && b.from > t);
+  if (exam && info.kind !== "exam") {
+    const n = daysBetween(t, exam.from);
+    if (n <= 21) parts.push(`${n} day${n === 1 ? "" : "s"} to ${shortBlock(exam).replace(/ \(.*\)/, "")}`);
+  }
+  const out = parts.join(" · ");
+  return /[a-z0-9)]$/i.test(out) ? out + "." : out;
+}
 function viewToday(t) {
   const info = dayInfo(t);
   const userBlock = state.blocked[t];
   const wk = state.weeks[mondayOf(t)];
-  let html = `<h1>Today</h1><p class="sub">${fmtDay(t)}${info.phase ? " · " + esc(info.phase.name) : ""}</p>`;
+  let html = hero(t, info, wk, userBlock);
   let left = "";
 
   if (t < PLAN_START) {

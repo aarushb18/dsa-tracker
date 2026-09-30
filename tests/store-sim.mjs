@@ -44,3 +44,18 @@ run("alternating 140%/50%", (d) => (Math.floor((Date.parse(d) - Date.parse("2026
   S.untickAhead(st, t, 0); S.untickAhead(st, t, 0);
   console.log(`   after undo: tasks=${JSON.stringify(st.tasks)} ahead=${JSON.stringify(st.ahead)}`);
 }
+
+// Streak + 4 am day boundary
+{
+  const st = S.freshState();
+  const at = (iso) => S.todayIST(new Date(iso));
+  console.log("\n== day boundary:", at("2026-10-05T18:59:00Z"), "(00:29 IST on 6 Oct → still 5 Oct)", at("2026-10-05T22:31:00Z"), "(04:01 IST → 6 Oct)");
+  const tick = (d) => { S.ensureDay(st, d); S.toggleItem(st, d, 0); };
+  st.ahead["2026-09-30"] = [{ id: "java-01", track: "java", text: "x", hours: 0.75 }]; // did work early before the plan
+  ["2026-10-05", "2026-10-06", "2026-10-07"].forEach(tick); // 1–4 Oct are CAT 2 → paused, not broken
+  console.log("   streak on 7 Oct:", JSON.stringify(S.streak(st, "2026-10-07")), "(expect 4)");
+  console.log("   streak on 8 Oct before ticking:", S.streak(st, "2026-10-08").current, "(today never breaks it → 4)");
+  console.log("   streak on 9 Oct after missing 8 Oct:", S.streak(st, "2026-10-09").current, "best", S.streak(st, "2026-10-09").best, "(expect 0, best 4)");
+  S.toggleBlock(st, "2026-10-08", "Sick");
+  console.log("   same, but 8 Oct blocked:", S.streak(st, "2026-10-09").current, "(expect 4)");
+}

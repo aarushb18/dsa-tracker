@@ -5,8 +5,12 @@ import { PLAN_START, PLAN_END, DSA_STEPS, TASKS } from "./planner/plan-data.js";
 export const KEY = "prepplanner.v1";
 export const STEP_HRS = Object.fromEntries(DSA_STEPS.map((s) => [s.key, s.hrs]));
 
+// The app's day runs 4 am → 4 am IST, so late-night work still counts for the day you're on.
+export const DAY_START_HOUR = 4;
 export const todayIST = (now = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now); // YYYY-MM-DD
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(now.getTime() - DAY_START_HOUR * 36e5)); // YYYY-MM-DD
+export const hourIST = (now = new Date()) =>
+  +new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", hourCycle: "h23" }).format(now);
 
 export function freshState() {
   return {
@@ -22,6 +26,7 @@ export function freshState() {
     weeks: {}, // monday -> { multiplier, boosts, deficit, rescope, ... }
     credit: {}, // hours banked per track between days (so small shares add up)
     ahead: {}, // date -> [{ id, track, text, hours, planned }] future items done early on that date
+    syncDays: {}, // date -> true when a Striver sync showed new problems solved (counts for the streak)
   };
 }
 
@@ -189,10 +194,13 @@ export const STEP_NAMES = DSA_STEPS.map((s) => s.name);
 export function applySync(state, payload, today) {
   if (!payload || !payload.steps) throw new Error("Not a PrepPilot sync payload");
   let matched = 0;
+  const before = Object.values(state.dsaDone).reduce((a, b) => a + b, 0);
   for (const step of DSA_STEPS) {
     const v = payload.steps[step.name];
     if (v && Number.isFinite(v[0])) { state.dsaDone[step.key] = Math.max(0, v[0] - step.done); matched++; }
   }
+  const after = Object.values(state.dsaDone).reduce((a, b) => a + b, 0);
+  if (today && after > before && state.sheet) (state.syncDays = state.syncDays || {})[today] = true; // not on the very first sync
   state.sheet = { at: payload.t || Date.now(), overall: payload.overall || null, steps: payload.steps };
   if (today && today >= PLAN_START) ensureWeek(state, today, { force: true });
   return matched;
@@ -213,6 +221,34 @@ export function toggleBlock(state, date, label) {
   state.blocked[date] = label || "Blocked";
   delete state.frozen[date];
   return true;
+}
+
+// ---- streak ----
+// A day counts if you ticked something (incl. work done early) or a sync showed new problems.
+// Exam, break, internship and blocked days (and days before the plan) pause the streak instead of breaking it.
+// Today never breaks it: it only adds once you've done something.
+const STREAK_FLOOR = "2026-09-25";
+export function isActive(state, d) {
+  return Object.keys(state.checked[d] || {}).length > 0 || (state.ahead[d] || []).length > 0 || !!(state.syncDays || {})[d];
+}
+function pauses(state, d) {
+  return dayInfo(d).kind !== "study" || !!state.blocked[d];
+}
+export function streak(state, today) {
+  let cur = 0;
+  let d = today;
+  if (isActive(state, d)) cur++;
+  for (d = addDays(today, -1); d >= STREAK_FLOOR; d = addDays(d, -1)) {
+    if (isActive(state, d)) cur++;
+    else if (!pauses(state, d)) break;
+  }
+  let best = 0, run = 0;
+  for (d = STREAK_FLOOR; d <= today; d = addDays(d, 1)) {
+    if (isActive(state, d)) run++;
+    else if (!pauses(state, d) && d !== today) run = 0;
+    best = Math.max(best, run);
+  }
+  return { current: cur, best: Math.max(best, cur), activeToday: isActive(state, today) };
 }
 
 // ---- numbers for the Progress tab ----

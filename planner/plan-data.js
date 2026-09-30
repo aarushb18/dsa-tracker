@@ -110,7 +110,7 @@ export const TASKS = {
     t("git-02", "Git branches, merge, a PR on your own repo; write the dsa-java README", 1.5),
   ],
   java: [
-    t("java-01", "Java refresher: types, loops, methods, arrays, String vs StringBuilder", 4),
+    t("java-01", "Java basics: types, loops, methods, arrays, String vs StringBuilder", 5),
     t("java-02", "OOP 1: classes, objects, constructors, this, static", 3),
     t("java-03", "OOP 2: inheritance, super, method overriding", 3),
     t("java-04", "OOP 3: polymorphism, abstract classes, interfaces", 3),
@@ -131,7 +131,7 @@ export const TASKS = {
     t("sql-05", "Schema design: PK/FK, normalization basics — draw the PrepPilot schema", 2),
   ],
   spring: [
-    t("spring-01", "HTTP + REST refresher: methods, status codes, JSON; install Postman", 1.5),
+    t("spring-01", "HTTP + REST basics: methods, status codes, JSON; install Postman", 1.5),
     t("spring-02", "Spring Initializr + Maven; first @RestController returning hello", 2),
     t("spring-03", "Controllers: @GetMapping/@PostMapping, @PathVariable, @RequestBody, DTOs", 3),
     t("spring-04", "Spring Data JPA + PostgreSQL: entity, repository, application.properties", 4),
@@ -153,8 +153,8 @@ export const TASKS = {
     t("proj-10", "Tests: service unit tests + integration tests; GitHub Actions CI on every push", 5),
     t("proj-11", "API docs with Swagger / OpenAPI (springdoc)", 1),
     t("proj-12", "Deploy backend + managed Postgres to a free host", 5),
-    t("proj-13a", "Frontend basics: HTML, CSS, JavaScript + fetch()", 6),
-    t("proj-13", "Frontend: connect the UI to your API (login, today view, planner, sync)", 7),
+    t("proj-13a", "Frontend basics: HTML, CSS, JavaScript + fetch()", 8),
+    t("proj-13", "Frontend: connect the UI to your API (login, today view, planner, sync)", 5),
     t("proj-14", "Deploy frontend + point it at the live backend; get 3 friends to try it", 2),
     t("proj-15", "README polish: screenshots, live link, architecture diagram, how the re-planner works", 2),
   ],
