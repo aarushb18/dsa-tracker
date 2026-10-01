@@ -170,3 +170,10 @@ ol.steps { padding-left: 20px; margin: 8px 0; } ol.steps li { margin: 6px 0; }
 .card.mini .bar { height: 6px; }
 .only-mob { display: none; }
 @media (max-width: 760px) { .only-mob { display: block; margin-top: 14px; } .only-desk { display: none; } }
+
+/* task parts */
+.part { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.pbar { flex: none; display: flex; width: 70px; height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.pbar i { display: block; height: 100%; background: var(--c, var(--accent)); opacity: .45; }
+.pbar i.cur { opacity: 1; }
+.item.done .pbar i.cur { opacity: .45; }

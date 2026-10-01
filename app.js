@@ -48,6 +48,20 @@ function resLinks(it) {
   return `<details class="res"><summary>▶ Watch · ${list.length}</summary><p class="res-hint">${esc(hint)}</p><ol>${list.map((r) => `<li class="${role(r)}">${a(r)}</li>`).join("")}</ol></details>`;
 }
 
+// Long tasks are split into parts across days. Show the title once, and the part as "where you are in the task".
+const PART_RE = /\s*\[([\d.]+)→([\d.]+) of ([\d.]+)h\]$/;
+function splitPart(text) {
+  const m = PART_RE.exec(text || "");
+  return m ? { title: text.slice(0, m.index), part: { from: +m[1], to: +m[2], of: +m[3] } } : { title: text, part: null };
+}
+function partHtml(part, done) {
+  if (!part) return "";
+  const a = Math.round((part.from / part.of) * 100), b = Math.round(((part.to - part.from) / part.of) * 100);
+  const txt = done ? `Done ${hh(part.from)} → ${hh(part.to)}h of ${hh(part.of)}h`
+    : part.from < 0.01 ? `Starts this task · ${hh(part.of)}h in total`
+    : `Continues · ${hh(part.from)}h of ${hh(part.of)}h already done`;
+  return `<div class="part"><span class="pbar"><i style="width:${a}%"></i><i class="cur" style="width:${b}%"></i></span><span>${txt}</span></div>`;
+}
 const resRow = (it) => { const h = resLinks(it); return h ? `<div class="resrow">${h}</div>` : ""; };
 
 function toast(msg) {
@@ -80,7 +94,7 @@ function itemRow(it, opts) {
   const dsa = it.track === "dsa" && it.kind === "dsa";
   return `<li class="item ${checked ? "done" : ""} t-${it.track}">
     <button class="tick" role="checkbox" aria-checked="${!!checked}" aria-label="Mark done" ${interactive ? `data-a="tick" data-date="${date}" data-i="${i}"` : "disabled"}>${CHECK}</button>
-    <div class="txt"><span class="main">${esc(it.text)}</span>
+    <div class="txt"><span class="main">${esc(splitPart(it.text).title)}</span>${partHtml(splitPart(it.text).part, checked)}
       <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${dsa ? '<span class="small">tick it on Striver too</span>' : ""}</div>${resRow(it)}
     </div></li>`;
 }
@@ -92,7 +106,7 @@ function projItemRow(it, date, i) {
     : `<span class="tick ghost" aria-hidden="true"><span class="dot t-${it.track}"></span></span>`;
   const note = it.track === "dsa" && !it.fixed ? '<span class="small">tick on Striver, then sync</span>' : it.fixed ? '<span class="small">on the day</span>' : "";
   return `<li class="item t-${it.track}">${lead}
-    <div class="txt"><span class="main">${esc(describe(it))}</span>
+    <div class="txt"><span class="main">${esc(splitPart(describe(it)).title)}</span>${partHtml(splitPart(describe(it)).part, false)}
     <div class="meta"><span class="tag">${label(it.track)}</span><span>${hh(it.hours)}h</span>${it.stretch ? '<span class="chip">stretch</span>' : ""}${note}</div>${resRow(it)}</div></li>`;
 }
 
@@ -129,7 +143,7 @@ function aheadCard(t) {
   return `<div class="card"><div class="row"><h2 style="margin:0">Done ahead today</h2><span class="chip good">+${hh(hrs)}h</span></div>
     <ul class="items">${list.map((x, i) => `<li class="item done t-${x.track}">
       <button class="tick" role="checkbox" aria-checked="true" aria-label="Undo" data-a="unahead" data-date="${t}" data-i="${i}">${CHECK}</button>
-      <div class="txt"><span class="main">${esc(x.text)}</span>
+      <div class="txt"><span class="main">${esc(splitPart(x.text).title)}</span>${partHtml(splitPart(x.text).part, true)}
       <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div>${resRow(x)}</div></li>`).join("")}</ul></div>`;
 }
 function statusChip(m) {
@@ -441,7 +455,11 @@ $app.addEventListener("click", (e) => {
   if (a === "ahead") {
     const day = S.project(state, t).days.find((d) => d.date === el.dataset.date);
     const it = day && day.items[+el.dataset.i];
-    if (it && S.tickAhead(state, t, it, el.dataset.date)) { save(); render(); toast("Done early. Logged for today and the plan moved up."); }
+    if (it && S.tickAhead(state, t, it, el.dataset.date)) {
+      save(); render();
+      const next = it.id && S.project(state, t).days.find((d) => d.items.some((x) => x.id === it.id));
+      toast(next ? `Done early. The next part of this task is now on ${fmtDay(next.date)}.` : "Done early. Logged for today and the plan moved up.");
+    }
     return;
   }
   if (a === "unahead") { S.untickAhead(state, el.dataset.date, +el.dataset.i); save(); render(); return; }
