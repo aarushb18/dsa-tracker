@@ -27,6 +27,7 @@ export function freshState() {
     credit: {}, // hours banked per track between days (so small shares add up)
     ahead: {}, // date -> [{ id, track, text, hours, planned }] future items done early on that date
     syncDays: {}, // date -> true when a Striver sync showed new problems solved (counts for the streak)
+    dsaLog: {}, // date -> { stepKey: [sheet problem numbers newly solved that day] } (from syncs)
   };
 }
 
@@ -128,7 +129,7 @@ export function ensureDay(state, today) {
 
 export function freezeItem(it) {
   const kind = it.fixed ? "fixed" : it.track === "dsa" ? "dsa" : "task";
-  return { kind, track: it.track, text: describe(it), hours: it.hours, id: it.id || null, step: it.step || null, count: it.count || 0, stretch: !!it.stretch };
+  return { kind, track: it.track, text: describe(it), hours: it.hours, id: it.id || null, step: it.step || null, count: it.count || 0, stretch: !!it.stretch, from: it.from || null, to: it.to || null };
 }
 
 export function toggleItem(state, date, idx) {
@@ -199,15 +200,65 @@ export function applySync(state, payload, today) {
   if (!payload || !payload.steps) throw new Error("Not a PrepPilot sync payload");
   let matched = 0;
   const before = Object.values(state.dsaDone).reduce((a, b) => a + b, 0);
+  const firstSync = !state.sheet;
   for (const step of DSA_STEPS) {
     const v = payload.steps[step.name];
-    if (v && Number.isFinite(v[0])) { state.dsaDone[step.key] = Math.max(0, v[0] - step.done); matched++; }
+    if (!v || !Number.isFinite(v[0])) continue;
+    const prevCount = step.done + (state.dsaDone[step.key] || 0);
+    state.dsaDone[step.key] = Math.max(0, v[0] - step.done);
+    matched++;
+    if (today && !firstSync && v[0] !== prevCount) logDsa(state, today, step.key, prevCount, v[0]);
   }
+  if (today) autoTickDsa(state, today);
   const after = Object.values(state.dsaDone).reduce((a, b) => a + b, 0);
   if (today && after > before && state.sheet) (state.syncDays = state.syncDays || {})[today] = true; // not on the very first sync
   state.sheet = { at: payload.t || Date.now(), overall: payload.overall || null, steps: payload.steps };
   if (today && today >= PLAN_START) ensureWeek(state, today, { force: true });
   return matched;
+}
+
+// Which sheet problems (by number within the step) were newly solved on `today`.
+function logDsa(state, today, key, prevCount, newCount) {
+  const day = ((state.dsaLog = state.dsaLog || {})[today] = state.dsaLog[today] || {});
+  let list = day[key] || [];
+  if (newCount > prevCount) for (let k = prevCount + 1; k <= newCount; k++) { if (!list.includes(k)) list.push(k); }
+  else list = list.filter((k) => k <= newCount); // unticked on Striver
+  if (list.length) day[key] = list.sort((a, b) => a - b); else delete day[key];
+  if (!Object.keys(day).length) delete state.dsaLog[today];
+}
+
+// Problem-number range of a frozen DSA item (older saved items only have it in the text).
+function rangeOf(it) {
+  if (it.from && it.to) return [it.from, it.to];
+  const m = /#(\d+)(?:–(\d+))? of/.exec(it.text || "");
+  return m ? [+m[1], +(m[2] || m[1])] : null;
+}
+
+// A sync that covers today's planned DSA items ticks them on today's list too.
+function autoTickDsa(state, today) {
+  const fr = state.frozen[today];
+  if (!fr) return;
+  const chk = (state.checked[today] = state.checked[today] || {});
+  fr.items.forEach((it, i) => {
+    if (it.kind !== "dsa" || chk[i]) return;
+    const step = DSA_STEPS.find((s) => s.key === it.step);
+    const count = step.done + (state.dsaDone[it.step] || 0);
+    const r = rangeOf(it);
+    if (r && count >= r[1]) chk[i] = true; // counted by the sync already, so don't add to dsaDone again
+  });
+}
+
+// DSA solved today (from syncs) that wasn't on today's own checklist.
+export function dsaDoneToday(state, today) {
+  const log = (state.dsaLog || {})[today] || {};
+  const fr = state.frozen[today];
+  const out = [];
+  for (const step of DSA_STEPS) {
+    let ks = log[step.key] || [];
+    if (fr) for (const it of fr.items) { const r = it.kind === "dsa" && it.step === step.key && rangeOf(it); if (r) ks = ks.filter((k) => k < r[0] || k > r[1]); }
+    if (ks.length) out.push({ step, ks, hours: ks.length * step.hrs });
+  }
+  return out;
 }
 
 export function parseSyncHash(hash) {

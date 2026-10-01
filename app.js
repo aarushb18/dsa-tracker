@@ -137,14 +137,22 @@ function nextDaysCard(t, proj) {
 }
 
 function aheadCard(t) {
-  const list = state.ahead[t];
-  if (!list || !list.length) return "";
-  const hrs = list.reduce((a, x) => a + x.hours, 0);
-  return `<div class="card"><div class="row"><h2 style="margin:0">Done ahead today</h2><span class="chip good">+${hh(hrs)}h</span></div>
-    <ul class="items">${list.map((x, i) => `<li class="item done t-${x.track}">
+  const list = state.ahead[t] || [];
+  const dsa = S.dsaDoneToday(state, t);
+  if (!list.length && !dsa.length) return "";
+  const hrs = list.reduce((a, x) => a + x.hours, 0) + dsa.reduce((a, d) => a + d.hours, 0);
+  const n = (ks) => (ks.length === 1 ? `#${ks[0]}` : ks.every((k, i) => !i || k === ks[i - 1] + 1) ? `#${ks[0]}–${ks[ks.length - 1]}` : ks.map((k) => "#" + k).join(", "));
+  const dsaRows = dsa.map((d) => `<li class="item done t-dsa">
+      <span class="tick synced" role="img" aria-label="Solved">${CHECK}</span>
+      <div class="txt"><span class="main">Solved ${d.ks.length} problem${d.ks.length > 1 ? "s" : ""}: ${esc(d.step.name)} ${n(d.ks)} of ${d.step.firstPass}</span>
+      <div class="meta"><span class="tag">DSA</span><span>${hh(d.hours)}h</span><span class="small">from Striver sync</span></div></div></li>`).join("");
+  const taskRows = list.map((x, i) => `<li class="item done t-${x.track}">
       <button class="tick" role="checkbox" aria-checked="true" aria-label="Undo" data-a="unahead" data-date="${t}" data-i="${i}">${CHECK}</button>
       <div class="txt"><span class="main">${esc(splitPart(x.text).title)}</span>${partHtml(splitPart(x.text).part, true)}
-      <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div>${resRow(x)}</div></li>`).join("")}</ul></div>`;
+      <div class="meta"><span class="tag">${label(x.track)}</span><span>${hh(x.hours)}h</span>${x.planned ? `<span class="small">was planned for ${fmtDay(x.planned)}</span>` : ""}</div>${resRow(x)}</div></li>`).join("");
+  return `<div class="card"><div class="row"><h2 style="margin:0">Done ahead today</h2><span class="chip good">+${hh(hrs)}h</span></div>
+    <ul class="items">${dsaRows}${taskRows}</ul>
+    ${dsa.length ? '<p class="muted small" style="margin:6px 0 0">DSA comes from your Striver sync. To undo one, untick it on Striver and sync again.</p>' : ""}</div>`;
 }
 function statusChip(m) {
   if (m.status === "done") return '<span class="chip good">Done</span>';
@@ -225,7 +233,7 @@ function statusLine(t, info, wk, userBlock) {
     if (wk && wk.ahead > 0.5) parts.push(`you're ${hh(wk.ahead)}h ahead`);
     else if (wk && wk.multiplier > 1.01) parts.push(`a little catch-up till ${DOWN[dow(wk.end)]}`);
   }
-  const ahead = (state.ahead[t] || []).reduce((a, x) => a + x.hours, 0);
+  const ahead = (state.ahead[t] || []).reduce((a, x) => a + x.hours, 0) + S.dsaDoneToday(state, t).reduce((a, d) => a + d.hours, 0);
   if (ahead) parts.push(`+${hh(ahead)}h done early today`);
   const exam = BLOCKS.find((b) => b.type === "exam" && b.from > t);
   if (exam && info.kind !== "exam") {
