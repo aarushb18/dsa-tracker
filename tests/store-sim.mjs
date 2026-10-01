@@ -9,7 +9,7 @@ function run(name, ratioFor, until = "2027-04-16") {
     const fr = S.ensureDay(st, d);
     if (fr) {
       // tick items in order until the day's budget (ratio * planned) is used
-      let budget = (fr.planned / ((st.weeks[S.mondayOf(d)] || {}).multiplier || 1)) * ratioFor(d); // fixed real capacity
+      let budget = (fr.planned / ((st.weeks[S.checkStartOf(d)] || {}).multiplier || 1)) * ratioFor(d); // fixed real capacity
       fr.items.forEach((it, i) => { if (budget >= it.hours * 0.5) { S.toggleItem(st, d, i); budget -= it.hours; } });
     }
     if (w && w.at === d && w.multiplier !== 1) log.push(`${d}: x${w.multiplier.toFixed(2)} deficit ${w.deficit.toFixed(1)} rescope=${w.rescope}`);

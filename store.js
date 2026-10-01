@@ -1,5 +1,5 @@
 // State + weekly re-plan logic. No DOM in here, so it can be tested in Node.
-import { schedule, weeklyAdjust, milestoneBoosts, describe, dayInfo, addDays, mondayOf, dow } from "./planner/scheduler.js";
+import { schedule, weeklyAdjust, milestoneBoosts, describe, dayInfo, addDays, mondayOf, dow, checkStartOf, checkEndOf } from "./planner/scheduler.js";
 import { PLAN_START, PLAN_END, DSA_STEPS, TASKS } from "./planner/plan-data.js";
 
 export const KEY = "prepplanner.v1";
@@ -73,7 +73,7 @@ function capacity(from, to, state) {
 
 export const multipliersOf = (state) => Object.fromEntries(Object.entries(state.weeks).map(([m, w]) => [m, w.multiplier]));
 export function currentBoosts(state, today) {
-  const w = state.weeks[mondayOf(today)];
+  const w = state.weeks[checkStartOf(today)];
   return (w && w.boosts) || {};
 }
 
@@ -86,28 +86,32 @@ const planOpts = (state, today, extra = {}) => ({
   ...extra,
 });
 
-// ---- weekly re-plan: runs once per Monday-week, from real progress ----
+// ---- re-plan check: runs twice a week (Mon, Thu), from real progress ----
+// state.weeks is keyed by the check's start date (a Monday or a Thursday).
 export function ensureWeek(state, today, { force = false } = {}) {
   if (today < PLAN_START || today > PLAN_END) return null;
-  const mon = mondayOf(today);
-  if (mon < PLAN_START) return null; // exam days before the first full week
-  if (state.weeks[mon] && !force) return state.weeks[mon];
+  const start = checkStartOf(today);
+  if (start < PLAN_START) return null; // exam days before the first window
+  if (state.weeks[start] && !force) return state.weeks[start];
+  const end = checkEndOf(start);
+  const nextWeekBase = capacity(start, end, state);
+  if (!nextWeekBase && !state.weeks[start]) return null; // nothing to plan in this window (exams, breaks)
   if (!state.startDate) state.startDate = today > PLAN_START ? today : PLAN_START;
   const from = state.startDate;
-  const plannedToDate = mon > from ? plannedBetween(from, addDays(mon, -1), state) : 0;
+  const plannedToDate = start > from ? plannedBetween(from, addDays(start, -1), state) : 0;
   const doneToDate = workDone(state);
-  const nextWeekBase = capacity(mon, addDays(mon, 6), state);
-  const adj = weeklyAdjust({ plannedToDate, doneToDate, nextWeekBase });
+  const weekBase = Math.max(nextWeekBase, capacity(start, addDays(start, 6), state));
+  const adj = weeklyAdjust({ plannedToDate, doneToDate, nextWeekBase, weekBase });
   const mult = adj.multiplier || 1;
   const boosts = milestoneBoosts(
-    schedule({ progress: progressOf(state), from: mon, multipliers: { ...multipliersOf(state), [mon]: mult }, extraBlocks: state.blocked }).milestones,
-    mon,
+    schedule({ progress: progressOf(state), from: start, multipliers: { ...multipliersOf(state), [start]: mult }, extraBlocks: state.blocked }).milestones,
+    start,
   );
-  state.weeks[mon] = {
+  state.weeks[start] = {
     multiplier: mult, extraHours: adj.extra || 0, deficit: adj.deficit || 0, ahead: adj.ahead || 0,
-    rescope: !!adj.rescope, boosts, plannedToDate, doneToDate, at: today,
+    rescope: !!adj.rescope, boosts, plannedToDate, doneToDate, at: today, end,
   };
-  return state.weeks[mon];
+  return state.weeks[start];
 }
 
 // ---- today's list: computed once per day from live progress, then fixed ----
@@ -264,4 +268,4 @@ export function trackTotals(state) {
 export const appsSent = (state) =>
   TASKS.career.filter((t) => t.apps).reduce((a, t) => a + (Math.min(t.hours, state.tasks[t.id] || 0) >= t.hours - 0.2 ? t.apps : 0), 0);
 
-export { dow, mondayOf, addDays, PLAN_START, PLAN_END };
+export { dow, mondayOf, addDays, checkStartOf, checkEndOf, PLAN_START, PLAN_END };

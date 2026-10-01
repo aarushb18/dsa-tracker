@@ -142,6 +142,31 @@ function blockBanner(kind, text) {
   return `<div class="banner ${kind}"><b>${esc(text)}</b></div>`;
 }
 
+// ---------- progress numbers (shared by Today + Progress) ----------
+function dsaTotals() {
+  let solved = 0, total = 0, stretch = 0;
+  for (const s of DSA_STEPS) {
+    const n = Math.min(s.firstPass, s.done + (state.dsaDone[s.key] || 0));
+    if (s.stretch) stretch += n; else { solved += n; total += s.firstPass; }
+  }
+  return { solved, total, stretch };
+}
+function progressRows() {
+  const d = dsaTotals();
+  const rows = [{ cls: "t-dsa", name: "DSA", done: d.solved, total: d.total, txt: `${d.solved} / ${d.total} problems${d.stretch ? ` · +${d.stretch} stretch` : ""}` }];
+  for (const [tr, v] of Object.entries(S.trackTotals(state))) rows.push({ cls: `t-${tr}`, name: label(tr), done: v.done, total: v.total, txt: `${hh(v.done)} / ${hh(v.total)}h` });
+  return rows;
+}
+function rowsHtml(rows) {
+  return rows.map((r) => `<div class="prow"><div class="row small"><span class="${r.cls}"><span class="tag">${esc(r.name)}</span></span><span class="muted">${r.txt}</span></div>
+    <div class="bar"><i class="${r.cls}" style="width:${Math.round((r.done / r.total) * 100)}%"></i></div></div>`).join("");
+}
+function progressMini() {
+  return `<div class="card mini"><div class="row"><h2 style="margin:0">Your progress</h2><span class="muted small">${S.appsSent(state)} applications sent</span></div>
+    <div style="margin-top:10px">${rowsHtml(progressRows())}</div>
+    <button class="btn" data-a="nav" data-v="progress" style="margin-top:4px">Details</button></div>`;
+}
+
 // ---------- Today ----------
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 
@@ -153,10 +178,13 @@ function hero(t, info, wk, userBlock) {
     ? `<span class="streak" title="Days in a row you've done something. Exam, break and blocked days don't break it.">🔥 ${st.current}-day streak</span>${st.best > st.current ? `<span class="muted small">best ${st.best}</span>` : ""}`
     : `<span class="streak off">Tick one thing to start a streak</span>${st.best ? `<span class="muted small">best ${st.best}</span>` : ""}`;
   const [q, who] = quoteFor(t);
+  const [, m, dd] = ymd(t);
+  const tileKind = userBlock ? "blocked" : info.kind === "exam" ? "exam" : info.kind === "rest" ? "rest" : info.kind === "internship" ? "internship" : "study";
   return `<div class="hero">
-    <h1>${greet}</h1>
-    <div class="hero-meta">${streakHtml}</div>
-    <p class="sub">${fmtDay(t)}${info.phase ? " · " + esc(info.phase.name) : ""}</p>
+    <div class="hero-top">
+      <div class="caltile ${tileKind}" aria-label="${fmtDay(t)}"><span>${DOWN[dow(t)]}</span><b>${dd}</b><span>${MON[m - 1]}</span></div>
+      <div><h1>${greet}</h1><div class="hero-meta">${streakHtml}</div></div>
+    </div>
     <p class="status">${esc(statusLine(t, info, wk, userBlock))}</p>
     <p class="quote">“${esc(q)}”${who ? ` <span>— ${esc(who)}</span>` : ""}</p>
   </div>`;
@@ -174,13 +202,14 @@ function statusLine(t, info, wk, userBlock) {
   } else if (info.kind === "rest") parts.push("Break day. Enjoy it, no plan today");
   else if (info.kind === "internship") parts.push("Internship time. Good luck 💼");
   else if (info.kind === "study") {
+    if (info.phase) parts.push(info.phase.name);
     const p = S.dayProgress(state, t);
     if (!p || !p.count) parts.push("Light day: nothing planned. Rest or get ahead");
     else if (p.doneCount === p.count) parts.push("All done for today 🎉");
     else if (p.doneCount) parts.push(`${p.count - p.doneCount} of ${p.count} items left, about ${hh(p.planned - p.done)}h`);
     else parts.push(`${p.count} item${p.count === 1 ? "" : "s"} today, about ${hh(p.planned)}h`);
-    if (wk && wk.ahead > 0.5) parts.push(`you're ${hh(wk.ahead)}h ahead this week`);
-    else if (wk && wk.multiplier > 1.01) parts.push("a little catch-up this week");
+    if (wk && wk.ahead > 0.5) parts.push(`you're ${hh(wk.ahead)}h ahead`);
+    else if (wk && wk.multiplier > 1.01) parts.push(`a little catch-up till ${DOWN[dow(wk.end)]}`);
   }
   const ahead = (state.ahead[t] || []).reduce((a, x) => a + x.hours, 0);
   if (ahead) parts.push(`+${hh(ahead)}h done early today`);
@@ -195,7 +224,7 @@ function statusLine(t, info, wk, userBlock) {
 function viewToday(t) {
   const info = dayInfo(t);
   const userBlock = state.blocked[t];
-  const wk = state.weeks[mondayOf(t)];
+  const wk = state.weeks[S.checkStartOf(t)];
   let html = hero(t, info, wk, userBlock);
   let left = "";
 
@@ -226,6 +255,7 @@ function viewToday(t) {
       ${allDone ? '<p class="chip good" style="margin-top:10px">All done for today 🎉</p>' : ""}
     </div>`;
   }
+  left += `<div class="only-mob">${progressMini(t)}</div>`;
   if (t >= PLAN_START && t <= PLAN_END && info.kind === "study" && !userBlock) {
     left += `<div class="btns"><button class="btn" data-a="block" data-date="${t}">Block today (hackathon / travel / sick)</button></div>`;
   }
@@ -236,19 +266,20 @@ function viewToday(t) {
   }
 
   // right column
-  let right = "";
-  const mon = mondayOf(t);
+  let right = `<div class="only-desk">${progressMini(t)}</div>`;
+  const cs = S.checkStartOf(t);
   if (wk && t >= PLAN_START && t <= PLAN_END) {
     let note = "On plan.";
     let chip = '<span class="chip good">On plan</span>';
     if (wk.rescope) { chip = '<span class="chip bad">Rescope</span>'; note = "You're well behind. Adding more hours won't fix it. Drop the stretch DSA topics or move the start of applications back a week."; }
-    else if (wk.multiplier > 1.01) { chip = `<span class="chip warn">+${Math.round((wk.multiplier - 1) * 100)}% catch-up</span>`; note = `You were ${hh(wk.deficit)}h behind last week, so this week carries a little more work.`; }
+    else if (wk.multiplier > 1.01) { chip = `<span class="chip warn">+${Math.round((wk.multiplier - 1) * 100)}% catch-up</span>`; note = `You were ${hh(wk.deficit)}h behind at this check, so the next few days carry a little more work (never more than +25%).`; }
     else if (wk.ahead > 0.5) { chip = `<span class="chip good">${hh(wk.ahead)}h ahead</span>`; note = "You're ahead. The plan picks up from where you actually are, so nothing is repeated."; }
     const boosts = Object.keys(wk.boosts || {}).map(label).join(", ");
-    right += `<div class="card"><div class="row"><h2 style="margin:0">Week of ${fmtShort(mon)}</h2>${chip}</div>
+    right += `<div class="card"><div class="row"><h2 style="margin:0">Check: ${DOWN[dow(cs)]} ${fmtShort(cs)} – ${DOWN[dow(wk.end || cs)]} ${fmtShort(wk.end || cs)}</h2>${chip}</div>
+      <p class="muted small" style="margin:4px 0 0">Progress is checked every Monday and Thursday.</p>
       <p class="small" style="margin:8px 0 0">${esc(note)}</p>
       ${boosts ? `<p class="small muted" style="margin:6px 0 0">Priority: ${esc(boosts)} (a milestone is behind)</p>` : ""}
-      ${dow(t) === 0 ? '<p class="small pin" style="margin:8px 0 0">Sunday: sync your Striver progress so tomorrow\'s plan is right.</p><div class="btns" style="margin-top:6px"><button class="btn primary" data-a="nav" data-v="sync">Sync now</button></div>' : ""}</div>`;
+      ${dow(t) === 0 || dow(t) === 3 ? '<p class="small pin" style="margin:8px 0 0">Sync your Striver progress today so tomorrow\'s check is right.</p><div class="btns" style="margin-top:6px"><button class="btn primary" data-a="nav" data-v="sync">Sync now</button></div>' : ""}</div>`;
   }
   const ms = S.liveMilestones(state, t).filter((m) => m.status !== "done").sort((a, b) => a.target.localeCompare(b.target)).slice(0, 4);
   if (ms.length) {
@@ -357,12 +388,8 @@ function viewProgress(t) {
     return `<div style="margin-bottom:11px"><div class="row small"><span>${esc(s.name)}${s.stretch ? ' <span class="chip">stretch</span>' : ""}</span><span class="muted">${solved}/${s.firstPass}${sh ? ` · sheet ${sh[0]}/${sh[1]}` : ""}</span></div>
       <div class="bar" style="margin-top:4px"><i style="width:${pct}%"></i></div></div>`;
   }).join("");
-  const trackRows = Object.entries(totals).map(([tr, v]) => {
-    const pct = Math.round((v.done / v.total) * 100);
-    return `<div style="margin-bottom:11px"><div class="row small"><span class="t-${tr}"><span class="tag">${label(tr)}</span></span><span class="muted">${hh(v.done)} / ${hh(v.total)}h</span></div>
-      <div class="bar" style="margin-top:4px"><i style="width:${pct}%"></i></div></div>`;
-  }).join("");
-  const weeks = Object.entries(state.weeks).sort(([a], [b]) => b.localeCompare(a)).slice(0, 8);
+  const trackRows = rowsHtml(progressRows());
+  const weeks = Object.entries(state.weeks).sort(([a], [b]) => b.localeCompare(a)).slice(0, 10);
   return `<h1>Progress</h1>
     <p class="sub">${sheet ? `Striver sheet: <b>${sheet.overall ? sheet.overall[0] + " / " + sheet.overall[1] : "synced"}</b> solved · last sync ${new Date(sheet.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : 'Striver sheet not synced yet. <a href="#" data-a="nav" data-v="sync">Set it up</a>'}</p>
     <div class="card"><h2>Milestones</h2><div class="scroll"><table><thead><tr><th>Milestone</th><th>Target</th><th>Projected</th><th></th></tr></thead><tbody>
@@ -370,10 +397,10 @@ function viewProgress(t) {
     </tbody></table></div></div>
     <div class="grid2" style="grid-template-columns:1fr 1fr">
       <div class="card"><h2>DSA: first pass</h2>${stepRows}<p class="muted small" style="margin:0">Hard problems are skipped on the first pass.</p></div>
-      <div><div class="card"><h2>Hours done by track</h2>${trackRows}
+      <div><div class="card"><h2>Done by track</h2>${trackRows}
         <div class="row small" style="margin-top:4px"><span><b>Applications sent</b></span><span class="stat" style="font-size:20px">${apps}</span></div></div>
-      ${weeks.length ? `<div class="card"><h2>Weekly re-plan log</h2><div class="scroll"><table><thead><tr><th>Week</th><th>Behind</th><th>This week</th></tr></thead><tbody>
-        ${weeks.map(([m, w]) => `<tr><td>${fmtShort(m)}</td><td>${w.deficit > 0.25 ? hh(w.deficit) + "h" : "–"}</td><td>${w.rescope ? "rescope" : w.multiplier > 1.01 ? "+" + Math.round((w.multiplier - 1) * 100) + "%" : "normal"}</td></tr>`).join("")}</tbody></table></div></div>` : ""}</div>
+      ${weeks.length ? `<div class="card"><h2>Re-plan checks (Mon + Thu)</h2><div class="scroll"><table><thead><tr><th>Check</th><th>Behind</th><th>Next days</th></tr></thead><tbody>
+        ${weeks.map(([m, w]) => `<tr><td>${DOWN[dow(m)]} ${fmtShort(m)}</td><td>${w.deficit > 0.25 ? hh(w.deficit) + "h" : "–"}</td><td>${w.rescope ? "rescope" : w.multiplier > 1.01 ? "+" + Math.round((w.multiplier - 1) * 100) + "%" : "normal"}</td></tr>`).join("")}</tbody></table></div></div>` : ""}</div>
     </div>`;
 }
 

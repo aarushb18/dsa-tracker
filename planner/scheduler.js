@@ -12,6 +12,9 @@ const fmt = (d) => d.toISOString().slice(0, 10);
 export const addDays = (s, n) => { const d = toDate(s); d.setUTCDate(d.getUTCDate() + n); return fmt(d); };
 export const dow = (s) => toDate(s).getUTCDay(); // 0 = Sunday
 export const mondayOf = (s) => addDays(s, -((dow(s) + 6) % 7));
+// Progress is checked twice a week: Mon (covers Mon–Wed) and Thu (covers Thu–Sun).
+export const checkStartOf = (s) => { const d = dow(s); return d >= 1 && d <= 3 ? mondayOf(s) : addDays(mondayOf(s), 3); };
+export const checkEndOf = (start) => addDays(start, dow(start) === 1 ? 2 : 3);
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const dowName = (s) => DOW[dow(s)];
 
@@ -70,7 +73,7 @@ export function schedule({ progress = {}, from = PLAN_START, to = PLAN_END, mult
     days.push(day);
     if (info.kind !== "study") continue;
 
-    const mult = multipliers[mondayOf(date)] || 1;
+    const mult = multipliers[checkStartOf(date)] || 1;
     let cap = info.hours * mult;
 
     // Fixed Sunday items
@@ -184,12 +187,13 @@ export function milestoneBoosts(milestones, today) {
   return boosts;
 }
 
-// Next week's catch-up: behind → up to +25% hours next week; ahead → same hours, work simply continues further along.
-export function weeklyAdjust({ plannedToDate, doneToDate, nextWeekBase }) {
+// Catch-up for the next check window: behind → up to +25% of that window's hours; ahead → same hours,
+// work simply continues further along. `weekBase` = a normal week's hours (for the rescope threshold).
+export function weeklyAdjust({ plannedToDate, doneToDate, nextWeekBase, weekBase = nextWeekBase }) {
   const deficit = plannedToDate - doneToDate;
   if (deficit <= 0.25 || !nextWeekBase) return { multiplier: 1, extra: 0, deficit, ahead: Math.max(0, -deficit) };
-  // More than ~2 weeks behind: stop inflating weeks you can't sustain — flag a rescope instead.
-  if (deficit > 2 * nextWeekBase) return { multiplier: 1, extra: 0, deficit, ahead: 0, rescope: true };
+  // More than ~2 weeks behind: stop inflating windows you can't sustain — flag a rescope instead.
+  if (deficit > 2 * weekBase) return { multiplier: 1, extra: 0, deficit, ahead: 0, rescope: true };
   const extra = Math.min(deficit, 0.25 * nextWeekBase);
   return { multiplier: 1 + extra / nextWeekBase, extra, deficit, ahead: 0 };
 }

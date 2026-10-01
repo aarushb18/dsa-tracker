@@ -152,3 +152,21 @@ ol.steps { padding-left: 20px; margin: 8px 0; } ol.steps li { margin: 6px 0; }
 .res-hint { margin: 0 0 4px; font-size: 12px; color: var(--muted); }
 .rk.alt, .rk.optional { color: var(--warn); border-color: var(--warn-soft); background: var(--warn-soft); }
 .res li.alt, .res li.optional { opacity: .85; }
+
+/* calendar tile */
+.hero-top { display: flex; align-items: center; gap: 14px; }
+.caltile { flex: none; width: 60px; border-radius: 12px; overflow: hidden; text-align: center; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); --tc: var(--accent); }
+.caltile span { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 2px 0; }
+.caltile span:first-child { background: var(--tc); color: var(--on-accent); }
+.caltile b { display: block; font-size: 26px; line-height: 1.05; letter-spacing: -.02em; }
+.caltile.exam { --tc: var(--warn); } .caltile.rest { --tc: var(--good); } .caltile.internship { --tc: var(--t-project); } .caltile.blocked { --tc: var(--muted); }
+.hero .status { margin-top: 12px; }
+
+/* progress rows */
+.prow { margin-bottom: 10px; }
+.prow .bar { margin-top: 4px; }
+.bar > i[class*="t-"] { background: var(--c); }
+.card.mini .prow { margin-bottom: 7px; }
+.card.mini .bar { height: 6px; }
+.only-mob { display: none; }
+@media (max-width: 760px) { .only-mob { display: block; margin-top: 14px; } .only-desk { display: none; } }

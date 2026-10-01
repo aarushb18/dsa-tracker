@@ -10,14 +10,14 @@ Plain HTML/CSS/JS. There is no build step and no server, so it deploys to Vercel
 - **▶ Watch links** on every Java, SQL, Spring Boot, project and career item (`planner/resources.js`, Hindi first). DSA items link to the Striver sheet.
 - **Next 14 days** (on Today, from any date, even before the plan starts) lists the upcoming days. Java, SQL, project and career items can be done early: ticking one logs it as done today, the plan moves up, and the Monday re-plan counts you as ahead. DSA is counted by the Striver sync instead.
 - **Planner** is the whole plan by month. Click a day to see it. Block a day (hackathon, travel, sick) and it won't count as behind.
-- **Progress** shows milestones (target vs projected), DSA by step, hours by track and the weekly re-plan log.
+- **Progress** shows milestones (target vs projected), DSA by step, progress by track (DSA as problems, the rest as hours) and the re-plan log. A compact version of the track progress is also on Today.
 - **Sync** brings in your Striver A2Z progress with one click, and exports/imports a backup.
 
-### Weekly re-plan
-On the first open of each week the app compares hours you were meant to do with hours you did.
-- Behind: up to +25% work that week. If you're more than ~2 weeks behind it stops inflating and asks you to rescope.
+### Re-plan checks (Monday + Thursday)
+On the first open each Monday (covers Mon–Wed) and Thursday (covers Thu–Sun) the app compares hours you were meant to do with hours you did.
+- Behind: up to +25% work for the next few days. If you're more than ~2 weeks behind it stops inflating and asks you to rescope.
 - Ahead: the plan continues from where you really are, so nothing is repeated and later milestones move earlier.
-- A late or at-risk milestone gets extra priority that week.
+- A late or at-risk milestone gets extra priority until the next check.
 
 ### Striver sync
 1. Open **Sync**, drag **PrepPilot sync** to your bookmarks bar.
