@@ -74,6 +74,7 @@ function toast(msg) {
 // ---------- shell ----------
 function render() {
   const t = S.todayIST();
+  S.backfillDsaLog(state, t);
   S.ensureWeek(state, t);
   S.ensureDay(state, t);
   save();

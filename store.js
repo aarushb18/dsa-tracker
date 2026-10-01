@@ -227,6 +227,19 @@ function logDsa(state, today, key, prevCount, newCount) {
   if (!Object.keys(day).length) delete state.dsaLog[today];
 }
 
+// One-time fill for problems synced before the daily DSA log existed: anything solved since the
+// 29 Sep baseline, before the first study day (5 Oct), counts as done ahead today.
+export function backfillDsaLog(state, today) {
+  if (state.dsaLogInit) return false;
+  state.dsaLogInit = true;
+  if (today >= "2026-10-05") return false;
+  for (const step of DSA_STEPS) {
+    const n = state.dsaDone[step.key] || 0;
+    for (let k = step.done + 1; k <= step.done + n; k++) logDsa(state, today, step.key, k - 1, k);
+  }
+  return true;
+}
+
 // Problem-number range of a frozen DSA item (older saved items only have it in the text).
 function rangeOf(it) {
   if (it.from && it.to) return [it.from, it.to];
