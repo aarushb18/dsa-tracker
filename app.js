@@ -197,7 +197,7 @@ function hero(t, info, wk, userBlock) {
   return `<div class="hero">
     <div class="hero-top">
       <div class="caltile ${tileKind}" aria-label="${fmtDay(t)}"><span>${DOWN[dow(t)]}</span><b>${dd}</b><span>${MON[m - 1]}</span></div>
-      <div><h1>${greet}</h1><div class="hero-meta">${streakHtml}</div></div>
+      <div><h1>${greet}</h1><div class="hero-meta">${streakHtml}${h < S.DAY_START_HOUR ? `<span class="chip night" title="The day switches at ${S.DAY_START_HOUR} am, so late-night work counts for the day you're on.">🌙 after midnight · counts as ${DOWN[dow(t)]} until ${S.DAY_START_HOUR} am</span>` : ""}</div></div>
     </div>
     <p class="status">${esc(statusLine(t, info, wk, userBlock))}</p>
     <p class="quote">“${esc(q)}”${who ? ` <span>— ${esc(who)}</span>` : ""}</p>

@@ -177,3 +177,4 @@ ol.steps { padding-left: 20px; margin: 8px 0; } ol.steps li { margin: 6px 0; }
 .pbar i { display: block; height: 100%; background: var(--c, var(--accent)); opacity: .45; }
 .pbar i.cur { opacity: 1; }
 .item.done .pbar i.cur { opacity: .45; }
+.chip.night { background: var(--accent-soft); color: var(--accent); white-space: normal; }
