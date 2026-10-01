@@ -498,9 +498,16 @@ $app.addEventListener("change", (e) => {
 });
 
 function applyPayload(payload) {
+  state = S.loadState(); // start from the latest saved data (another tab may have changed it)
+  const before = (state.sheet && state.sheet.steps) || {};
   const n = S.applySync(state, payload, S.todayIST());
   save(); ui.view = "progress"; writePref("view", "progress"); render();
-  toast(`Synced ${n} steps from Striver`);
+  const changes = Object.entries(payload.steps || {})
+    .filter(([k, v]) => before[k] && v && v[0] !== before[k][0])
+    .map(([k, v]) => `${k} ${before[k][0]} → ${v[0]}`);
+  if (changes.length) toast(`Synced from Striver: ${changes.join(", ")}`);
+  else if (Object.keys(before).length) toast("Synced, but no new problems on the sheet. If you just ticked one, reload the Striver page, then click sync again.");
+  else toast(`Synced ${n} steps from Striver`);
 }
 function handleHash() {
   if (!location.hash.startsWith("#sync=")) return;
@@ -509,7 +516,10 @@ function handleHash() {
   history.replaceState(null, "", location.pathname + location.search);
 }
 
-document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+// Several PrepPilot tabs can be open (the sync opens a new one). Always re-read the saved data before
+// showing a tab again, so an old tab never overwrites newer progress.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { state = S.loadState(); render(); } });
+window.addEventListener("storage", (e) => { if (e.key === S.KEY) { state = S.loadState(); render(); } });
 window.addEventListener("hashchange", handleHash);
 render();
 handleHash();
