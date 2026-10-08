@@ -12,10 +12,12 @@ const playlist = (id) => `https://www.youtube.com/playlist?list=${id}`;
 
 const cwh = (n, title, id) => ({ t: `CodeWithHarry #${n}: ${title}`, u: yt(id, CWH) });
 const v = (t, u, extra = {}) => ({ t, u, ...extra });
+// Coder Army "OOPs in Java Full Course" lesson n = their Java Full Course #num
+const ca = (n, num, title, id) => ({ t: `Coder Army lesson ${n} (#${num}): ${title}`, u: yt(id) });
 
 export const TEACHERS = {
   git: "Apna College (Hindi)",
-  java: "CodeWithHarry's Java course (Hindi)",
+  java: "CodeWithHarry's Java course (Hindi); OOP from Coder Army (Hindi)",
   sql: "Rishabh Mishra's SQL course, PostgreSQL (Hindi)",
   spring: "Anuj Bhaiya / Coding Shuttle (Hindi)",
   project: "Engineering Digest + others (Hindi first)",
@@ -45,32 +47,28 @@ export const RESOURCES = {
     cwh(32, "Method overloading", "pFaB68naMiU"),
     v("GFG: String vs StringBuilder vs StringBuffer", "https://www.geeksforgeeks.org/java/string-vs-stringbuilder-vs-stringbuffer-in-java/", { kind: "article" }),
   ],
+  // OOP: Coder Army (Rohit Negi), "OOPs in Java Full Course" playlist = Java Full Course #12–#19, #22, #24.
   "java-02": [
-    cwh(36, "Intro to OOP", "5OrZpBbGKgc"),
-    cwh(37, "OOP terminologies", "HHWPcyFmw2o"),
-    cwh(38, "Creating our own class", "0HIR0rzj8pQ"),
-    cwh(42, "Constructors", "Fxj4n8En8lw"),
-    v("Learn By Watch: static keyword in Java (Hindi)", yt("STIV4c685LM")),
+    ca(1, 12, "Classes, objects, new keyword (1h05)", "tmXD7Kzun54"),
+    ca(2, 13, "Constructors: chaining, overloading, this (58m)", "RADpqk79IzQ"),
+    ca(3, 14, "Objects deep dive: call by value vs reference, shallow vs deep copy (44m)", "7yd5qO2TPr0"),
+    ca(4, 15, "Static & final, static blocks, String[] args (45m)", "Lyg4ZcrjUBw"),
+    v("Alt: CodeWithHarry #36: Intro to OOP (continue his playlist)", yt("5OrZpBbGKgc", CWH)),
   ],
   "java-03": [
-    cwh(45, "Inheritance", "XSuybcFfLx4"),
-    cwh(46, "Constructors in inheritance", "-b-_NNlCcng"),
-    cwh(47, "this and super", "R1SXNJElXHo"),
-    cwh(48, "Method overriding", "DSZI90Db24I"),
+    ca(5, 16, "Encapsulation & inheritance, packages, super (1h38)", "jfLpzL1VW7Q"),
+    v("Alt: CodeWithHarry #45: Inheritance (continue his playlist)", yt("XSuybcFfLx4", CWH)),
   ],
   "java-04": [
-    cwh(49, "Dynamic method dispatch", "qbXNFOuD9k4"),
-    cwh(53, "Abstract class", "vqV22AszAdw"),
-    cwh(54, "Interfaces", "VYhmL038G1I"),
-    cwh(55, "Abstract class vs interface", "qZEFslUVfx0"),
-    cwh(57, "Default methods in interfaces", "D4TYED_gKTE"),
-    cwh(59, "Polymorphism with interfaces", "08u8RlXca2I"),
+    ca(6, 17, "Abstraction & polymorphism, abstract class vs interface (1h28)", "-L9BcU6Xk2c"),
+    v("Coder Army lesson 10 (#24): Java interfaces deep dive (1h00)", ytSearch("coder army java interfaces deep dive default methods functional marker"), { kind: "search" }),
+    v("Alt: CodeWithHarry #53: Abstract class (continue his playlist)", yt("vqV22AszAdw", CWH)),
   ],
   "java-05": [
-    cwh(40, "Access modifiers, getters & setters", "25zw-ljLLw0"),
-    cwh(64, "Packages", "k7TwStbkK70"),
-    cwh(65, "Creating packages", "av816KIz8nM"),
-    cwh(66, "Access modifiers in depth", "vgg9T4_0CNA"),
+    v("Coder Army lesson 7 (#18): autoboxing, abstract classes & POJOs (1h12)", ytSearch("coder army autoboxing abstract classes pojos why only one public class java"), { kind: "search" }),
+    ca(9, 22, "Object class: equals, hashCode, toString (1h08)", "541Zpv6sOKo"),
+    { ...ca(8, 19, "Nested classes: static nested, inner, local, anonymous (1h21)", "0LaBK28_470"), t: "Optional: Coder Army lesson 8 (#19): nested classes (1h21)" },
+    v("Alt: CodeWithHarry #40: Access modifiers, getters & setters", yt("25zw-ljLLw0", CWH)),
   ],
   "java-06": [
     cwh(78, "Errors & exceptions", "ZovnoASlIaE"),
